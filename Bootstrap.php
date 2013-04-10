@@ -185,18 +185,24 @@ class Shopware_Plugins_Frontend_PaymentSkrill_Bootstrap extends Shopware_Compone
     public function enable ()
         {
         $payment = $this->Payment();
-	$payment->active = 1;
-	$payment->save();
-
+	if ($payment)
+	    {
+	    $payment->active = 1;
+	    $payment->save();
+	    }
+	
 	return parent::enable();
         }
 
     public function disable()
         {
 	$payment = $this->Payment();
-	$payment->active = 0;
-	$payment->save();
-
+	if ($payment)
+	    {
+	    $payment->active = 0;
+	    $payment->save();
+	    }
+	
 	return parent::disable();
         }
 

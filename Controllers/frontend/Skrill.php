@@ -40,6 +40,14 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
     private static $skrill_url;
     
     private $sid;
+    private $_logh = NULL;
+    private $_logpath = NULL;
+    private $_loglevel = Array('debug', 'info', 'warn', 'error');
+    
+    const debug_e   = 0;
+    const info_e    = 1;
+    const warn_e    = 2;
+    const error_e   = 3;
     
     public function indexAction ()
         {
@@ -149,6 +157,9 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
             {
             $post_vars['wpf_redirect'] = '1';
             }
+            
+        if ($config->debug)
+            $this->_logMessage (var_export($post_vars, true));
 	
 	$this->View()->errorStatus = 0;
 	if (!$this->_preparePayment($post_vars))
@@ -179,7 +190,7 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
         
      public function failAction ()
 	{
-        $this->View()->extendsTemplate('fail.tpl');
+        $this->View()->extendsTemplate('frontend/payment_skrill/fail.tpl');
 	}
 
     public function cancelAction ()
@@ -248,13 +259,44 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
 				     $status,
 				     true);
 	    }
+
+        $this->View()->extendsTemplate('frontend/payment_skrill/status.tpl');
 	}
     
     public function Config()
 	{
 	return Shopware()->Plugins()->Frontend()->PaymentSkrill()->Config();
 	}
+        
+    public function __destruct ()
+        {
+        if ($this->_logh)
+            fclose($this->_logh);
+        $this->_logh = NULL;
+        }
 
+    private function _logMessage ($message, $level = self::debug_e)
+        {
+        $this->_logpath = dirname(dirname(dirname(__FILE__))) . '/messages.log';
+        
+        if (NULL === $this->_logh)
+            {
+            $sz = @filesize($this->_logpath);
+            $this->_logh = @fopen($this->_logpath, "a+");
+            if (FALSE === $this->_logh)
+                throw new Exception(sprintf('Cannot open logfile %s!', $this->_logpath));
+            
+            if (!$sz)
+                fprintf($this->_logh, "%s - [info] - Logfile started!\n\n",
+                        strftime('%d %b %Y %H:%M:%S', time()));
+            }
+    
+        fprintf($this->_logh, "%s - [%s] - %s\n",
+                strftime('%d %b %Y %H:%M:%S', time()),
+                strtolower($this->_loglevel[$level]),
+                $message);
+        }
+    
     private function _parseSID ($response)
 	{
 	$matches = array();

@@ -270,6 +270,11 @@ class Shopware_Plugins_Frontend_PaymentSkrill_Bootstrap extends Shopware_Compone
 		'label' => 'Hide Login',
 		'value' => true
 		));
+        
+        $form->setElement('checkbox', 'debug', array(
+		'label' => 'Debug',
+		'value' => false
+		));
 
 	foreach (self::$paymentMethods as $pAbbrMethod => $pMethod)
 	    {

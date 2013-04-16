@@ -139,6 +139,19 @@ class Shopware_Plugins_Frontend_PaymentSkrill_Bootstrap extends Shopware_Compone
 
             }
         }
+        
+    protected function createTable ()
+        {
+        $sql = "CREATE TABLE IF NOT EXISTS `s_paymentskrill_status` (
+                    `transaction_id`        varchar(255)    NOT NULL,
+                    `shopware_paymentid`    char(32)        NOT NULL,
+                    `status`                tinyint         NOT NULL,
+                    `sw_status`             tinyint         NOT NULL,
+                    
+                PRIMARY KEY (transaction_id)
+		)";
+        Shopware()->Db()->exec($sql);
+        }
 
     public function install ()
         {
@@ -156,6 +169,7 @@ class Shopware_Plugins_Frontend_PaymentSkrill_Bootstrap extends Shopware_Compone
 	$this->subscribeEvent($event);
 
 	$this->createPayments();
+        $this->createTable();
 	$this->createForm();
 
 	return true;
@@ -179,6 +193,9 @@ class Shopware_Plugins_Frontend_PaymentSkrill_Bootstrap extends Shopware_Compone
 	    $pMethodNew->deletePayment();
 	    }
 
+        $sql = 'DROP TABLE `s_paymentskrill_status`';
+        Shopware()->Db()->exec($sql);
+        
 	return parent::uninstall();
         }
 

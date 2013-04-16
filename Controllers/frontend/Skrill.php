@@ -49,6 +49,9 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
     const warn_e    = 2;
     const error_e   = 3;
     
+    const payment_complete_e    = 12;
+    const payment_pending_e     = 17;
+    
     public function indexAction ()
         {
         switch ($this->getPaymentShortName())
@@ -159,7 +162,7 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
             }
             
         if ($config->debug)
-            $this->_logMessage (var_export($post_vars, true));
+            $this->_logMessage(var_export($post_vars, true));
 	
 	$this->View()->errorStatus = 0;
 	if (!$this->_preparePayment($post_vars))
@@ -201,10 +204,16 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
     public function finishAction ()
 	{
 	$request = $this->Request();
+        $paymentStatus = $this->_getPaymentStatus($request->getParam('transactionID'));
 	$orderNumber = $this->saveOrder($request->getParam('transactionID'),
 					$request->getParam('uniquePaymentID'),
-					NULL,
+					$paymentStatus,
 					true);
+        //$order = Shopware()->Models()->getRepository('Shopware\Models\Order\Order')
+        //                            ->findOneBy(array('transactionId' => $request->getParam('transaction_id')));
+       // $order->setPaymentStatus($paymentStatus);
+        //Shopware()->Models()->persist($order);
+        //Shopware()->Models()->flush();
 	$this->redirect(array('controller' => 'checkout',
 			      'action' => 'finish',
 			      'sUniqueID' => $request->getParam('uniquePaymentID')));
@@ -217,14 +226,17 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
 
 	$status = $request->getParam('status');
 	$status_verbose = '';
-	
+	$sw_status = 0;
+        
         switch ($status)
             {
             case 2 :
                 $status_verbose = 'Completed';
+                $sw_status = self::payment_complete_e;
                 break;
             case 0 :
                 $status_verbose = 'Pending';
+                $sw_status = self::payment_pending_e;
                 break;
             case -1 :
                 $status_verbose = 'Cancelled';
@@ -251,15 +263,30 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
 	    $this->forward('cancel');
 	    }
 	
-	if ($status == 2 ||
-	    $status == 0)
-	    {
-	    $this->savePaymentStatus($request->getParam('transaction_id'),
-				     $request->getParam('shopware_paymentid'),
-				     $status,
-				     true);
-	    }
+        if ($config->debug)
+            $this->_logMessage('Transaction status for trn: '.
+                               $request->getParam('transaction_id') . ": $sw_status");
 
+	if ((int)$status == 2 ||
+	    (int)$status == 0)
+	    {
+	    /*$this->savePaymentStatus($request->getParam('transaction_id'),
+				     $request->getParam('shopware_paymentid'),
+				     $sw_status,
+				     true);*/
+
+            $sql = 'INSERT INTO `s_paymentskrill_status` (`transaction_id` ,
+                                                        `shopware_paymentid`,
+                                                        `status`,
+                                                        `sw_status`)
+                    VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE
+                    status=values(status), sw_status=values(sw_status)';
+            Shopware()->Db()->query($sql, array($request->getParam('transaction_id'),
+                                                $request->getParam('shopware_paymentid'),
+                                                (int)$status,
+                                                (int)$sw_status));
+	    }
+        
         $this->View()->extendsTemplate('frontend/payment_skrill/status.tpl');
 	}
     
@@ -297,6 +324,14 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
                 $message);
         }
     
+    private function _getPaymentStatus ($transactionID)
+        {
+        $sql = 'SELECT `sw_status` FROM `s_paymentskrill_status` WHERE `transaction_id`=?';
+        $sw_status = Shopware()->Db()->fetchOne($sql, array($transactionID));
+        
+        return $sw_status;
+        }
+
     private function _parseSID ($response)
 	{
 	$matches = array();

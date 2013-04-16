@@ -148,7 +148,7 @@ class Shopware_Controllers_Frontend_PaymentSkrill extends Shopware_Controllers_F
 		    'phone_number'	=> $userinfo["billingaddress"]["phone"],
 		    'postal_code'	=> $userinfo["billingaddress"]["zipcode"],
 		    'country'		=> $userinfo["additional"]["country"]["iso3"],
-		    'language' 		=> Shopware()->System()->sLanguageData[Shopware()->System()->sLanguage]["isocode"],
+		    'language' 		=> Shopware()->Locale()->getLanguage(),
 		    
 		    // Payment details
 		    'amount'		=> $this->getAmount(),
